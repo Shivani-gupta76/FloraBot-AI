@@ -1,0 +1,5 @@
+import { CartesianGrid, Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
+
+export default function SensorTrend({ data }) {
+  return <div className="chart-wrap"><ResponsiveContainer width="100%" height="100%"><LineChart data={data} margin={{ top: 8, right: 16, bottom: 0, left: -14 }}><CartesianGrid stroke="#e9eee6" strokeDasharray="3 5" vertical={false} /><XAxis dataKey="time" tickLine={false} axisLine={false} tick={{ fill: '#8a9389', fontSize: 11 }} minTickGap={28} /><YAxis tickLine={false} axisLine={false} tick={{ fill: '#8a9389', fontSize: 11 }} width={48} /><Tooltip contentStyle={{ borderRadius: 12, borderColor: '#e4e9e1', boxShadow: '0 8px 24px rgba(32, 48, 32, .08)' }} labelStyle={{ color: '#677066' }} formatter={(value, _name, item) => [`${value} ${item.payload.unit}`, 'Measured']} /><Line type="monotone" dataKey="value" stroke="#31734d" strokeWidth={2.3} dot={false} activeDot={{ r: 4, fill: '#31734d', stroke: '#fff', strokeWidth: 2 }} /></LineChart></ResponsiveContainer></div>;
+}

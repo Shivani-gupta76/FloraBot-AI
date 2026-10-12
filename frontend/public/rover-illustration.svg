@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 180" role="img" aria-labelledby="title">
+  <title id="title">Illustration of a small agricultural rover</title>
+  <rect width="320" height="180" rx="20" fill="#f3f7f0"/>
+  <path d="M35 143h250" stroke="#d3dfd0" stroke-width="4" stroke-linecap="round"/>
+  <path d="M76 122 91 79q4-12 17-12h91q12 0 17 12l16 43" fill="#e6efe3" stroke="#477858" stroke-width="5" stroke-linejoin="round"/>
+  <path d="M106 69V52q0-8 8-8h50q8 0 8 8v17" fill="#fff" stroke="#477858" stroke-width="5"/>
+  <path d="M122 55h32" stroke="#b2c8ac" stroke-width="5" stroke-linecap="round"/>
+  <path d="M90 91h129" stroke="#78a280" stroke-width="5" stroke-linecap="round"/>
+  <circle cx="102" cy="129" r="19" fill="#315c40"/><circle cx="102" cy="129" r="7" fill="#eaf1e7"/>
+  <circle cx="218" cy="129" r="19" fill="#315c40"/><circle cx="218" cy="129" r="7" fill="#eaf1e7"/>
+  <path d="M160 43V29m-13 5 13-12 13 12" fill="none" stroke="#477858" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="M63 125c-5-17 2-28 16-33M258 125c5-17-2-28-16-33" fill="none" stroke="#b2c8ac" stroke-width="4" stroke-linecap="round"/>
+</svg>
