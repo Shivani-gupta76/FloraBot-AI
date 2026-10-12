@@ -178,4 +178,3 @@ npm run build
 
 
 
-A license has not yet been specified. Add a suitable license before distributing the project for reuse.
