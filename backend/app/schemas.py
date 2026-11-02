@@ -1,6 +1,8 @@
 from datetime import datetime
 from enum import Enum
-from pydantic import BaseModel, ConfigDict, EmailStr, Field, model_validator
+from typing import Literal
+from uuid import UUID
+from pydantic import BaseModel, ConfigDict, EmailStr, Field, field_validator, model_validator
 
 CLASSES = {"Tomato_Healthy", "Tomato_Early_Blight", "Tomato_Late_Blight", "Tomato_Bacterial_Spot", "Tomato_Septoria", "Tomato_Leaf_Mold", "Tomato_Target_Spot", "Tomato_Mosaic_Virus", "Tomato_Yellow_Leaf_Curl_Virus", "Tomato_Spider_Mites", "Potato_Healthy", "Potato_Early_Blight", "Potato_Late_Blight", "Pepper_Healthy", "Pepper_Bacterial_Spot"}
 
@@ -162,3 +164,123 @@ class AlertOut(ORMModel):
     details: dict | None
     is_read: bool
     created_at: datetime
+
+class DeviceAlertSummary(BaseModel):
+    id: int
+    alert_type: str
+    message: str
+    created_at: datetime
+
+class DeviceDetectionOut(BaseModel):
+    detection_id: int
+    plant_id: int
+    predicted_class: str
+    confidence: float
+    confidence_status: ConfidenceStatus
+    model_version: str | None
+    detected_at: datetime
+    alert: DeviceAlertSummary | None
+
+class DeviceCreateIn(BaseModel):
+    device_identifier: str = Field(min_length=1, max_length=128)
+    device_name: str = Field(min_length=1, max_length=160)
+    plant_id: int = Field(ge=1)
+
+    @field_validator("device_identifier", "device_name", mode="before")
+    @classmethod
+    def trim_device_text(cls, value):
+        return value.strip() if isinstance(value, str) else value
+
+class DeviceOut(BaseModel):
+    id: int
+    device_identifier: str
+    device_name: str
+    plant_id: int
+    enabled: bool
+    created_at: datetime
+    updated_at: datetime
+    last_seen_at: datetime | None
+    online: bool
+
+class DeviceRegisteredOut(DeviceOut):
+    device_token: str
+
+class DeviceCredentialRotatedOut(BaseModel):
+    device_id: int
+    credential_version: int
+    rotated_at: datetime
+    device_token: str
+
+class DeviceCredentialRevokedOut(BaseModel):
+    device_id: int
+    credential_revoked_at: datetime
+
+class DeviceUpdateIn(BaseModel):
+    enabled: bool
+
+class DeviceHeartbeatOut(BaseModel):
+    device_id: int
+    last_seen_at: datetime
+    online: bool
+
+class DeviceCommandCreateIn(BaseModel):
+    led_channel: Literal["LED1", "LED2"]
+    desired_state: Literal["ON", "OFF"]
+    source: Literal["DISEASE_DETECTION", "WATERING_ASSISTANT"]
+    reason: str = Field(min_length=1, max_length=500)
+    idempotency_key: str = Field(min_length=1, max_length=128)
+
+    @field_validator("reason", "idempotency_key", mode="before")
+    @classmethod
+    def trim_command_text(cls, value):
+        return value.strip() if isinstance(value, str) else value
+
+    @model_validator(mode="after")
+    def enforce_independent_led_sources(self):
+        expected_source = "WATERING_ASSISTANT" if self.led_channel == "LED1" else "DISEASE_DETECTION"
+        if self.source != expected_source:
+            raise ValueError("Command source does not match the reserved LED channel")
+        return self
+
+class DeviceCommandOut(ORMModel):
+    command_id: UUID
+    device_id: int
+    plant_id: int
+    led_channel: Literal["LED1", "LED2"]
+    desired_state: Literal["ON", "OFF"]
+    command_source: str
+    reason: str | None
+    status: Literal["PENDING", "DELIVERED", "ACKNOWLEDGED", "FAILED", "EXPIRED"]
+    idempotency_key: str
+    attempt_count: int
+    created_at: datetime
+    delivered_at: datetime | None
+    acknowledged_at: datetime | None
+    expires_at: datetime
+    failure_code: str | None
+    failure_detail: str | None
+
+class DeviceCommandDeliveryOut(BaseModel):
+    command_id: UUID
+    led_channel: Literal["LED1", "LED2"]
+    desired_state: Literal["ON", "OFF"]
+    source: str
+    reason: str | None
+    attempt_count: int
+    lease_expires_at: datetime
+    expires_at: datetime
+
+class DeviceCommandPollOut(BaseModel):
+    command: DeviceCommandDeliveryOut | None
+
+class DeviceCommandAckIn(BaseModel):
+    success: bool
+    failure_code: Literal["DEVICE_ERROR", "HARDWARE_ERROR", "EXECUTION_TIMEOUT", "UNKNOWN"] | None = None
+
+    @model_validator(mode="after")
+    def validate_failure_code(self):
+        if self.success and self.failure_code is not None:
+            raise ValueError("Successful acknowledgements must not include a failure code")
+        if not self.success and self.failure_code is None:
+            raise ValueError("Failed acknowledgements require a supported failure code")
+        return self

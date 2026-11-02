@@ -14,6 +14,17 @@ def test_auth_registration_and_login(client):
     assert login.headers["access-control-allow-origin"] == origin
     assert client.post("/api/auth/login", json={"email":"a@example.com", "password":"wrong-password"}).status_code == 401
 
+
+def test_validation_errors_do_not_echo_submitted_passwords_or_tokens(client):
+    marker = "sensitive-test-value"
+    response = client.post(
+        "/api/auth/register",
+        json={"email": "invalid-email", "full_name": "A User", "password": marker},
+    )
+    assert response.status_code == 422
+    assert marker not in response.text
+    assert "input" not in response.json()["detail"][0]
+
 def test_plant_create_and_update(client, auth):
     response = client.post("/api/plants", headers=auth, json={"crop_type":"Tomato", "latitude":18.5, "longitude":73.8})
     assert response.status_code == 201
@@ -27,6 +38,15 @@ def test_detection_validates_supported_class_and_saves(client, auth):
     assert client.post("/api/detections", headers=auth, json=payload).status_code == 201
     payload["class_name"] = "Made_Up_Disease"
     assert client.post("/api/detections", headers=auth, json=payload).status_code == 422
+
+
+def test_disease_model_class_allowlist_contains_fifteen_supported_classes():
+    from app.schemas import CLASSES
+    from app.services.inference import _normalize_class
+
+    assert len(CLASSES) == 15
+    assert len({_normalize_class(class_name) for class_name in CLASSES}) == 15
+    assert all(_normalize_class(class_name) == class_name for class_name in CLASSES)
 
 def test_sensor_submission_and_validation(client, auth):
     payload = {"robot_id":"robot-A", "sensor_type":"soil_moisture", "value":41, "unit":"percent", "recorded_at":"2026-01-02T03:04:05Z"}

@@ -1,5 +1,7 @@
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.exceptions import RequestValidationError
+from fastapi.responses import JSONResponse
 from app.api.routes import api
 from app.core.config import settings
 
@@ -16,6 +18,21 @@ app.add_middleware(
     max_age=600,
 )
 app.include_router(api)
+
+
+@app.exception_handler(RequestValidationError)
+async def safe_validation_error(_request: Request, error: RequestValidationError):
+    # Pydantic errors can carry the submitted input. Return field locations and
+    # static messages only so password/token-like values are never echoed.
+    safe_errors = [
+        {
+            "loc": item.get("loc", []),
+            "msg": item.get("msg", "Invalid request value"),
+            "type": item.get("type", "value_error"),
+        }
+        for item in error.errors()
+    ]
+    return JSONResponse(status_code=422, content={"detail": safe_errors})
 
 @app.get("/health")
 def health():

@@ -1,3 +1,14 @@
 node_modules/
 dist/
 .env
+# Local migration compatibility worktree
+.migration-compat/
+
+# Local frontend backups
+frontend/.phase1-backups/
+
+# Local test images
+backend/test_images/
+.migration-compat/
+frontend/.phase1-backups/
+backend/test_images/

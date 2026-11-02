@@ -1,0 +1,382 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>FloraBOT ESP32</title>
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%232f7d4f'/%3E%3Cpath d='M8 25c0-10 6-16 17-17 0 11-6 17-17 17z' fill='%23fff'/%3E%3C/svg%3E">
+  <script src="/js/theme.js"></script>
+  <link rel="stylesheet" href="/css/theme.css">
+  <link rel="stylesheet" href="/css/esp32.css">
+  <script type="module" src="/js/esp32.js"></script>
+</head>
+<body>
+  <div class="page">
+    <header class="masthead">
+      <div class="masthead__bar">
+        <div class="brand">
+          <svg class="brand__mark" viewBox="0 0 40 40" aria-hidden="true" focusable="false">
+            <rect class="brand__tile" width="40" height="40" rx="12"/>
+            <path class="brand__leaf" d="M10.5 29.5C10.5 18 17.5 10.8 30 10.5C29.6 23 22.4 29.5 10.5 29.5Z"/>
+            <path class="brand__vein" d="M10.5 29.5 16.8 23.2H21.2M16.8 23.2V18.8"/>
+            <circle class="brand__pad" cx="22.4" cy="23.2" r="1.7"/>
+            <circle class="brand__pad" cx="16.8" cy="17.6" r="1.7"/>
+          </svg>
+          <h1 class="brand__title">FloraBOT ESP32</h1>
+          <span id="mode-badge" class="badge" hidden></span>
+        </div>
+        <div class="masthead__actions">
+          <button id="theme-toggle" class="btn btn-ghost theme-toggle" type="button" aria-label="Theme: Auto. Switch to Light.">
+            <svg class="icon" data-theme-icon="auto" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+              <circle cx="12" cy="12" r="8.25" fill="none" stroke="currentColor" stroke-width="1.75"/>
+              <path d="M12 3.75a8.25 8.25 0 0 1 0 16.5z" fill="currentColor"/>
+            </svg>
+            <svg class="icon" data-theme-icon="light" viewBox="0 0 24 24" aria-hidden="true" focusable="false" hidden>
+              <circle cx="12" cy="12" r="4" fill="none" stroke="currentColor" stroke-width="1.75"/>
+              <path d="M12 2.5v2.2M12 19.3v2.2M4.6 4.6l1.6 1.6M17.8 17.8l1.6 1.6M2.5 12h2.2M19.3 12h2.2M4.6 19.4l1.6-1.6M17.8 6.2l1.6-1.6" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round"/>
+            </svg>
+            <svg class="icon" data-theme-icon="dark" viewBox="0 0 24 24" aria-hidden="true" focusable="false" hidden>
+              <path d="M20.2 14.6A8.5 8.5 0 0 1 9.4 3.8a8.5 8.5 0 1 0 10.8 10.8z" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linejoin="round"/>
+            </svg>
+            <span id="theme-name">Auto</span>
+          </button>
+          <a class="btn btn-secondary" href="/" target="_blank" rel="noopener">
+            Open chat
+            <svg class="icon icon--small" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+              <path d="M14 4h6v6M20 4l-8.5 8.5M18 14v5a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1h5" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+            <span class="visually-hidden">(opens in a new tab)</span>
+          </a>
+        </div>
+      </div>
+      <p class="masthead__tip">Analyze a photo in the chat and its LED command appears here.</p>
+    </header>
+
+    <main>
+      <div class="banners">
+        <div id="unreachable-banner" class="banner banner--danger" hidden>
+          <svg class="icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+            <path d="M12 3.5 2.8 19.5h18.4L12 3.5z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/>
+            <path d="M12 9.5v4.5M12 16.6v.4" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"/>
+          </svg>
+          <p class="banner__text"><strong>Server unreachable — retrying</strong><span id="unreachable-detail" class="banner__detail"></span></p>
+        </div>
+        <div id="real-banner" class="banner banner--info" hidden>
+          <svg class="icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+            <circle cx="12" cy="12" r="8.6" fill="none" stroke="currentColor" stroke-width="1.8"/>
+            <path d="M12 11v5.2M12 7.6v.4" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"/>
+          </svg>
+          <p class="banner__text">Live monitor: showing the connected ESP32.</p>
+        </div>
+      </div>
+
+      <noscript><p class="banner banner--danger">This page needs JavaScript to show the ESP32.</p></noscript>
+
+      <div class="layout">
+        <section class="stage" aria-labelledby="board-title">
+          <h2 id="board-title" class="visually-hidden">ESP32 board</h2>
+          <figure id="board" class="board" data-led="unknown" data-online="unknown" data-stale="false">
+            <svg class="board__svg" viewBox="40 6 690 344" aria-hidden="true" focusable="false">
+              <defs>
+                <radialGradient id="led1-glow">
+                  <stop offset="0" stop-color="#ffffff" stop-opacity="1"/>
+                  <stop offset="0.26" stop-color="#d4ffe4" stop-opacity="0.95"/>
+                  <stop offset="0.36" stop-color="#7ef0ae" stop-opacity="0.62"/>
+                  <stop offset="0.6" class="stop-led" stop-opacity="0.22"/>
+                  <stop offset="1" class="stop-led" stop-opacity="0"/>
+                </radialGradient>
+                <radialGradient id="led1-lens-on" cx="0.38" cy="0.34" r="0.78">
+                  <stop offset="0" stop-color="#f1fff6"/>
+                  <stop offset="0.38" class="stop-led"/>
+                  <stop offset="1" stop-color="#16804a"/>
+                </radialGradient>
+                <radialGradient id="led1-lens-off" cx="0.38" cy="0.34" r="0.8">
+                  <stop offset="0" stop-color="#7d9486"/>
+                  <stop offset="0.55" stop-color="#43584b"/>
+                  <stop offset="1" stop-color="#26332b"/>
+                </radialGradient>
+                <radialGradient id="pwr-glow">
+                  <stop offset="0" stop-color="#ffc061" stop-opacity="0.9"/>
+                  <stop offset="1" stop-color="#ffc061" stop-opacity="0"/>
+                </radialGradient>
+                <linearGradient id="metal" x1="0" y1="0" x2="1" y2="1">
+                  <stop offset="0" stop-color="#f2f4f4"/>
+                  <stop offset="0.55" stop-color="#cdd3d4"/>
+                  <stop offset="1" stop-color="#a9b2b3"/>
+                </linearGradient>
+                <linearGradient id="gold" x1="0" y1="0" x2="1" y2="1">
+                  <stop offset="0" stop-color="#f3d98f"/>
+                  <stop offset="1" stop-color="#b48d3a"/>
+                </linearGradient>
+                <pattern id="header-pins" patternUnits="userSpaceOnUse" x="150" y="78" width="36" height="200">
+                  <rect x="11" y="5" width="14" height="14" rx="2" fill="#0d100f"/>
+                  <rect x="13" y="7" width="10" height="10" rx="1.2" fill="url(#gold)"/>
+                </pattern>
+                <pattern id="castellations" patternUnits="userSpaceOnUse" x="132" y="124" width="13" height="128">
+                  <rect x="3" y="0" width="7" height="4" fill="#c9a650"/>
+                </pattern>
+                <filter id="board-shadow" x="-8%" y="-10%" width="116%" height="135%">
+                  <feDropShadow dx="0" dy="12" stdDeviation="11" flood-color="#06140c" flood-opacity="0.32"/>
+                </filter>
+              </defs>
+
+              <g class="wifi" transform="translate(96 30)">
+                <path class="wifi__arc" d="M-7.07 20.93A10 10 0 0 1 7.07 20.93"/>
+                <path class="wifi__arc" d="M-14.14 13.86A20 20 0 0 1 14.14 13.86"/>
+                <path class="wifi__arc" d="M-21.21 6.79A30 30 0 0 1 21.21 6.79"/>
+                <circle class="wifi__dot" cx="0" cy="28" r="4"/>
+                <path class="wifi__slash" d="M-20 -4 20 34"/>
+              </g>
+
+              <g filter="url(#board-shadow)">
+                <rect class="pcb" x="100" y="70" width="592" height="240" rx="14"/>
+                <rect class="pcb__inner" x="106" y="76" width="580" height="228" rx="10"/>
+
+                <path class="trace" d="M300 166H326L340 152H366"/>
+                <path class="trace" d="M300 214H332L346 228H372"/>
+                <path class="trace" d="M548 214H582L596 200H662"/>
+                <path class="trace" d="M530 232V250L516 264H476"/>
+                <path class="trace" d="M620 154V166L606 180H594"/>
+                <path class="trace trace--led" d="M564 104V126L548 142H494"/>
+                <path class="trace trace--led" d="M466 142H452L428 166"/>
+
+                <rect class="header-strip" x="150" y="78" width="540" height="24" rx="3"/>
+                <rect x="150" y="78" width="540" height="24" fill="url(#header-pins)"/>
+                <rect class="header-strip" x="150" y="278" width="540" height="24" rx="3"/>
+                <rect x="150" y="278" width="540" height="24" fill="url(#header-pins)"/>
+
+                <g class="silk">
+                  <text x="168" y="116">D23</text><text x="204" y="116">D22</text><text x="240" y="116">TX0</text>
+                  <text x="276" y="116">RX0</text><text x="312" y="116">D21</text><text x="348" y="116">D19</text>
+                  <text x="384" y="116">D18</text><text x="420" y="116">D5</text><text x="456" y="116">TX2</text>
+                  <text x="492" y="116">RX2</text><text x="528" y="116">D4</text><text class="silk--hot" x="564" y="116">D2</text>
+                  <text x="600" y="116">D15</text><text x="636" y="116">GND</text><text x="672" y="116">3V3</text>
+                  <text x="168" y="272">EN</text><text x="204" y="272">VP</text><text x="240" y="272">VN</text>
+                  <text x="276" y="272">D34</text><text x="312" y="272">D35</text><text x="348" y="272">D32</text>
+                  <text x="384" y="272">D33</text><text x="420" y="272">D25</text><text x="456" y="272">D26</text>
+                  <text x="492" y="272">D27</text><text x="528" y="272">D14</text><text x="564" y="272">D12</text>
+                  <text x="600" y="272">D13</text><text x="636" y="272">GND</text><text x="672" y="272">VIN</text>
+                </g>
+
+                <g class="module">
+                  <rect class="module__pcb" x="64" y="124" width="236" height="132" rx="4"/>
+                  <path class="module__antenna" d="M76 244V136H88V232H100V136H112V244"/>
+                  <rect x="132" y="124" width="164" height="4" fill="url(#castellations)"/>
+                  <rect x="132" y="252" width="164" height="4" fill="url(#castellations)"/>
+                  <rect class="module__can" x="128" y="131" width="166" height="118" rx="5"/>
+                  <rect class="module__can-edge" x="134" y="137" width="154" height="106" rx="3"/>
+                  <text class="module__text" x="211" y="186">ESP32-WROOM-32</text>
+                  <text class="module__text module__text--small" x="211" y="204">Wi-Fi + Bluetooth</text>
+                </g>
+
+                <g class="parts">
+                  <rect class="smd" x="334" y="176" width="12" height="6" rx="1"/>
+                  <rect class="smd" x="334" y="196" width="12" height="6" rx="1"/>
+                  <rect class="smd smd--cap" x="574" y="242" width="12" height="6" rx="1"/>
+                  <rect class="smd smd--cap" x="494" y="250" width="12" height="6" rx="1"/>
+                  <rect class="smd" x="578" y="226" width="6" height="12" rx="1"/>
+
+                  <rect class="resistor" x="466" y="137" width="28" height="10" rx="2"/>
+                  <rect class="resistor__end" x="466" y="137" width="5" height="10" rx="1"/>
+                  <rect class="resistor__end" x="489" y="137" width="5" height="10" rx="1"/>
+                  <text class="silk silk--tiny" x="480" y="132">R1</text>
+
+                  <rect class="ic" x="512" y="196" width="36" height="36" rx="3"/>
+                  <circle class="chip__dot" cx="519" cy="203" r="2"/>
+                  <text class="chip__text" x="530" y="217">CP2102</text>
+
+                  <rect class="metal-part" x="456" y="224" width="22" height="6" rx="1"/>
+                  <rect class="ic" x="450" y="230" width="34" height="18" rx="2"/>
+                  <rect class="metal-part" x="453" y="248" width="5" height="6"/>
+                  <rect class="metal-part" x="464.5" y="248" width="5" height="6"/>
+                  <rect class="metal-part" x="476" y="248" width="5" height="6"/>
+                  <text class="chip__text" x="467" y="242">1117</text>
+
+                  <rect class="switch" x="606" y="126" width="28" height="28" rx="3"/>
+                  <circle class="switch__cap" cx="620" cy="140" r="8"/>
+                  <text class="silk silk--end" x="600" y="144">BOOT</text>
+                  <rect class="switch" x="606" y="226" width="28" height="28" rx="3"/>
+                  <circle class="switch__cap" cx="620" cy="240" r="8"/>
+                  <text class="silk silk--end" x="600" y="244">EN</text>
+
+                  <rect class="usb" x="658" y="168" width="54" height="44" rx="4"/>
+                  <path class="usb__seam" d="M666 176H700M666 204H700"/>
+                  <rect class="usb__mouth" x="706" y="176" width="6" height="28" rx="1.5"/>
+                </g>
+
+                <g class="pwr">
+                  <circle class="pwr__glow" cx="620" cy="190" r="22" fill="url(#pwr-glow)"/>
+                  <rect class="pwr__pad" x="610" y="185" width="20" height="10" rx="2"/>
+                  <rect class="pwr__lens" x="614" y="186" width="12" height="8" rx="1.5"/>
+                  <text class="silk silk--end" x="604" y="194">PWR</text>
+                </g>
+
+                <g class="led1" transform="translate(404 190)">
+                  <circle class="led1__glow" r="100" fill="url(#led1-glow)"/>
+                  <circle class="led1__ring" r="32"/>
+                  <path class="led1__flat" d="M-22.6 22.6A32 32 0 0 1 -32 0"/>
+                  <circle class="led1__lens" r="24"/>
+                  <circle class="led1__unknown" r="24"/>
+                  <text class="led1__question" y="7">?</text>
+                  <ellipse class="led1__spec" cx="-8" cy="-9" rx="7" ry="4.5" transform="rotate(-30 -8 -9)"/>
+                </g>
+                <text class="silk silk--label" x="404" y="250">LED1</text>
+              </g>
+            </svg>
+            <figcaption class="board__caption">
+              <div class="board__headline">
+                <span class="board__lamp" aria-hidden="true"></span>
+                <p id="led-caption" class="board__state" aria-live="polite">Connecting to the FloraBOT server…</p>
+              </div>
+              <p id="board-note" class="board__note"></p>
+            </figcaption>
+          </figure>
+
+          <section class="status" aria-labelledby="status-title">
+            <h2 id="status-title" class="visually-hidden">Status</h2>
+            <dl class="facts">
+              <div class="fact">
+                <dt>Device</dt>
+                <dd><code id="fact-device" class="fact__code">—</code></dd>
+              </div>
+              <div class="fact">
+                <dt>Connection</dt>
+                <dd>
+                  <span class="fact__value"><span id="fact-dot" class="dot" aria-hidden="true"></span><span id="fact-connection">—</span></span>
+                  <span id="fact-seen" class="fact__sub"></span>
+                </dd>
+              </div>
+              <div class="fact">
+                <dt>LED1</dt>
+                <dd>
+                  <span id="fact-led" class="fact__value">—</span>
+                  <span id="fact-led-sub" class="fact__sub"></span>
+                </dd>
+              </div>
+              <div class="fact">
+                <dt>Mode</dt>
+                <dd>
+                  <span id="fact-mode" class="fact__value">—</span>
+                  <span id="fact-mode-sub" class="fact__sub"></span>
+                </dd>
+              </div>
+            </dl>
+          </section>
+        </section>
+
+        <section id="command-panel" class="panel command" aria-labelledby="command-title">
+          <div class="panel__head">
+            <h2 id="command-title" class="panel__title" tabindex="-1">Incoming command</h2>
+            <span id="command-status" class="badge" hidden></span>
+          </div>
+          <div id="flash-region" class="flash-region" aria-live="polite"></div>
+
+          <div id="command-empty" class="command__empty">
+            <svg class="command__empty-icon" viewBox="0 0 48 48" aria-hidden="true" focusable="false">
+              <path d="M8 27 13 11h22l5 16v9a2 2 0 0 1-2 2H10a2 2 0 0 1-2-2z" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linejoin="round"/>
+              <path d="M8 27h10l2 4h8l2-4h10" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linejoin="round"/>
+            </svg>
+            <p class="command__wait">Waiting for a command…</p>
+            <p class="command__hint">Watering results send LED1 ON or OFF. Uncertain results send nothing, so LED1 stays as it is.</p>
+          </div>
+
+          <div id="command-pending" class="command__pending" hidden>
+            <p class="command__headline">LED1 <span aria-hidden="true">→</span> <span id="command-state">ON</span> requested</p>
+            <div class="countdown">
+              <div id="countdown-track" class="countdown__track" role="progressbar" aria-label="Time left before the command expires" aria-valuemin="0" aria-valuemax="30" aria-valuenow="30">
+                <div id="countdown-bar" class="countdown__bar"></div>
+              </div>
+              <p id="countdown-text" class="countdown__text"></p>
+            </div>
+            <ol class="steps" aria-label="Command progress">
+              <li class="step" data-state="done">
+                <span class="step__title">Requested by FloraBOT</span>
+                <span id="step-requested" class="step__detail"></span>
+              </li>
+              <li id="step-collect" class="step" data-state="current">
+                <span id="step-collect-title" class="step__title"></span>
+                <span id="step-collect-detail" class="step__detail"></span>
+              </li>
+              <li id="step-confirm" class="step" data-state="upcoming">
+                <span id="command-note" class="step__title"></span>
+              </li>
+            </ol>
+            <div id="manual-actions" class="command__actions" hidden>
+              <button id="ack-confirm" class="btn btn-primary btn-big" type="button">Apply ON &amp; confirm</button>
+              <button id="ack-fail" class="btn btn-big btn-fail" type="button">Report failure</button>
+            </div>
+          </div>
+        </section>
+
+        <section id="sim-panel" class="panel sim" aria-labelledby="sim-title" hidden>
+          <div class="panel__head">
+            <h2 id="sim-title" class="panel__title">Simulator</h2>
+            <p class="panel__lede">Choose how the simulated ESP32 answers LED commands.</p>
+          </div>
+          <fieldset class="behaviours">
+            <legend class="visually-hidden">Simulator behaviour</legend>
+            <label class="behaviour">
+              <input type="radio" name="behaviour" value="AUTO" aria-labelledby="behaviour-auto" aria-describedby="behaviour-auto-hint">
+              <span class="behaviour__text">
+                <span id="behaviour-auto" class="behaviour__name">Auto-confirm</span>
+                <span id="behaviour-auto-hint" class="behaviour__hint">Confirms each command after the response delay.</span>
+              </span>
+            </label>
+            <label class="behaviour">
+              <input type="radio" name="behaviour" value="MANUAL" aria-labelledby="behaviour-manual" aria-describedby="behaviour-manual-hint">
+              <span class="behaviour__text">
+                <span id="behaviour-manual" class="behaviour__name">Manual</span>
+                <span id="behaviour-manual-hint" class="behaviour__hint">Waits for you to confirm or fail each command.</span>
+              </span>
+            </label>
+            <label class="behaviour">
+              <input type="radio" name="behaviour" value="FAILING" aria-labelledby="behaviour-failing" aria-describedby="behaviour-failing-hint">
+              <span class="behaviour__text">
+                <span id="behaviour-failing" class="behaviour__name">Fail commands</span>
+                <span id="behaviour-failing-hint" class="behaviour__hint">Reports a failure after the delay, leaving LED1 as it is.</span>
+              </span>
+            </label>
+            <label class="behaviour">
+              <input type="radio" name="behaviour" value="OFFLINE" aria-labelledby="behaviour-offline" aria-describedby="behaviour-offline-hint">
+              <span class="behaviour__text">
+                <span id="behaviour-offline" class="behaviour__name">Offline</span>
+                <span id="behaviour-offline-hint" class="behaviour__hint">Stops checking in, so commands expire unconfirmed.</span>
+              </span>
+            </label>
+          </fieldset>
+          <div id="delay-field" class="delay">
+            <div class="delay__head">
+              <label class="delay__label" for="delay">Response delay</label>
+              <output id="delay-value" class="delay__value" for="delay">1.5 s</output>
+            </div>
+            <input id="delay" class="delay__input" type="range" min="0" max="10" step="0.5" value="1.5" aria-describedby="delay-hint">
+            <p id="delay-hint" class="delay__hint">Used by Auto-confirm and Fail commands.</p>
+          </div>
+        </section>
+
+        <section class="panel log" aria-labelledby="log-title">
+          <div class="panel__head">
+            <h2 id="log-title" class="panel__title">Command log</h2>
+            <p class="panel__lede">The last 20 LED commands, newest first.</p>
+          </div>
+          <p id="log-empty" class="log__empty">No LED commands yet.</p>
+          <ol id="log-list" class="log__list" hidden></ol>
+        </section>
+      </div>
+    </main>
+  </div>
+
+  <div id="toasts" class="toasts" aria-live="polite"></div>
+  <div id="announcer" class="visually-hidden" aria-live="polite"></div>
+
+  <template id="icon-success">
+    <svg class="icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><circle cx="12" cy="12" r="9" fill="none" stroke="currentColor" stroke-width="1.8"/><path d="m8 12.4 2.7 2.7L16.2 9.5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+  </template>
+  <template id="icon-failure">
+    <svg class="icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><circle cx="12" cy="12" r="9" fill="none" stroke="currentColor" stroke-width="1.8"/><path d="m9 9 6 6M15 9l-6 6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+  </template>
+  <template id="icon-neutral">
+    <svg class="icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><circle cx="12" cy="12" r="9" fill="none" stroke="currentColor" stroke-width="1.8"/><path d="M8 12h8" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+  </template>
+</body>
+</html>

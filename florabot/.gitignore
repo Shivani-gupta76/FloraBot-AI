@@ -1,0 +1,7 @@
+.venv*/
+__pycache__/
+.pytest_cache/
+*.db
+.env
+firmware/florabot_led1/secrets.h
+.DS_Store

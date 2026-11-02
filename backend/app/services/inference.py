@@ -5,12 +5,14 @@ from io import BytesIO
 from pathlib import Path
 import re
 from threading import Lock
+import warnings
 
 from app.core.config import settings
 from app.schemas import CLASSES
 
 DEFAULT_MODEL_PATH = Path(__file__).resolve().parents[2] / "models" / "flora_bot_best.pt"
 MAX_IMAGE_BYTES = 10 * 1024 * 1024
+MAX_IMAGE_PIXELS = 25_000_000
 _model_lock = Lock()
 _loaded_model = None
 _loaded_path: Path | None = None
@@ -22,6 +24,29 @@ class ModelUnavailable(RuntimeError):
 
 class InvalidImage(ValueError):
     pass
+
+
+def validate_image_bytes(image_bytes: bytes, expected_format: str | None = None) -> None:
+    """Validate compressed size, decoded dimensions, and image integrity in memory."""
+    if not image_bytes or len(image_bytes) > MAX_IMAGE_BYTES:
+        raise InvalidImage("Choose a readable image smaller than 10 MB.")
+    try:
+        from PIL import Image, UnidentifiedImageError
+    except (ImportError, ModuleNotFoundError) as error:
+        raise ModelUnavailable("The optional Pillow image runtime is not installed.") from error
+    try:
+        with warnings.catch_warnings():
+            warnings.simplefilter("error", Image.DecompressionBombWarning)
+            with Image.open(BytesIO(image_bytes)) as image:
+                if expected_format is not None and image.format != expected_format:
+                    raise InvalidImage(f"The uploaded image is not a {expected_format}.")
+                if image.width * image.height > MAX_IMAGE_PIXELS:
+                    raise InvalidImage("The image dimensions exceed the supported pixel limit.")
+                image.verify()
+    except InvalidImage:
+        raise
+    except (UnidentifiedImageError, OSError, ValueError, Image.DecompressionBombError, Image.DecompressionBombWarning) as error:
+        raise InvalidImage("The uploaded file is not a readable image.") from error
 
 
 def model_path() -> Path:
@@ -70,15 +95,14 @@ def _normalize_class(name: str) -> str | None:
 
 
 def classify_image(image_bytes: bytes) -> dict[str, str | float]:
-    if not image_bytes or len(image_bytes) > MAX_IMAGE_BYTES:
-        raise InvalidImage("Choose an image smaller than 10 MB.")
+    validate_image_bytes(image_bytes)
     try:
         from PIL import Image, UnidentifiedImageError
     except (ImportError, ModuleNotFoundError) as error:
         raise ModelUnavailable("The optional Pillow image runtime is not installed.") from error
     try:
         image = Image.open(BytesIO(image_bytes)).convert("RGB")
-    except (UnidentifiedImageError, OSError, ValueError) as error:
+    except (UnidentifiedImageError, OSError, ValueError, Image.DecompressionBombError) as error:
         raise InvalidImage("The uploaded file is not a readable image.") from error
 
     model = _get_model()
