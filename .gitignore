@@ -1,0 +1,2 @@
+# Salesforce CLI state is local tooling data, not FloraBot project source.
+.sf/
